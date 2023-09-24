@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 /// Task to do.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, ToSchema, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Todo {
     /// Unique id for the todo item.
     pub id: u64,
@@ -12,7 +13,7 @@ pub struct Todo {
 }
 
 /// Request to update existing `Todo` item.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
 pub struct TodoUpdateRequest {
     /// Optional new value for the `Todo` task.
     pub value: Option<String>,
@@ -21,7 +22,7 @@ pub struct TodoUpdateRequest {
 }
 
 /// Todo endpoint error responses
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Clone)]
 pub enum ErrorResponse {
     /// When Todo is not found by search term.
     NotFound(String),

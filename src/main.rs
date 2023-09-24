@@ -1,11 +1,14 @@
 use std::{
     error::Error,
+    future::{self, Ready},
     net::Ipv4Addr,
 };
 
 use actix_web::{
+    dev::{Service, ServiceRequest, ServiceResponse, Transform},
     middleware::Logger,
-    App, HttpServer,
+    web::Data,
+    App, HttpResponse, HttpServer,
 };
 use coi::container;
 use stores::memory::TodoMemoryProvider;
@@ -22,6 +25,13 @@ mod stores {
 #[cfg(test)]
 pub mod test_rest;
 
+use utoipa::OpenApi;
+use utoipa_rapidoc::RapiDoc;
+use utoipa_redoc::{Redoc, Servable};
+use utoipa_swagger_ui::SwaggerUi;
+
+use crate::schemas::{ErrorResponse, Todo, TodoUpdateRequest};
+
 
 #[actix_web::main]
 async fn main() -> Result<(), impl Error> {
@@ -30,6 +40,26 @@ async fn main() -> Result<(), impl Error> {
     let containers = container!{
         repository => memory_provider; singleton,
     };
+    #[derive(OpenApi)]
+    #[openapi(
+        paths(
+            rest::get_todos,
+            rest::create_todo,
+            rest::delete_todo,
+            rest::get_todo_by_id,
+            rest::update_todo,
+            rest::search_todos
+        ),
+        components(
+            schemas(Todo, TodoUpdateRequest, ErrorResponse)
+        ),
+        tags(
+            (name = "todo", description = "Todo management endpoints.")
+        ),
+    )]
+    struct ApiDoc;
+    // Make instance variable of ApiDoc so all worker threads gets the same instance.
+    let openapi = ApiDoc::openapi();
 
     HttpServer::new(move || {
         // This factory closure is called on each worker thread independently.
@@ -37,6 +67,15 @@ async fn main() -> Result<(), impl Error> {
             .app_data(containers.clone())
             .wrap(Logger::default())
             .configure(rest::configure())
+            .service(Redoc::with_url("/redoc", openapi.clone()))
+            .service(
+                SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", openapi.clone()),
+            )
+            // There is no need to create RapiDoc::with_openapi because the OpenApi is served
+            // via SwaggerUi instead we only make rapidoc to point to the existing doc.
+            .service(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
+            // Alternative to above
+            // .service(RapiDoc::with_openapi("/api-docs/openapi2.json", openapi.clone()).path("/rapidoc"))
     })
     .bind((Ipv4Addr::UNSPECIFIED, 8080))?
     .run()

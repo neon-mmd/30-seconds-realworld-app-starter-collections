@@ -8,7 +8,9 @@ use serde::Deserialize;
 use coi_actix_web::inject;
 
 use crate::store_interface::TodoRepository;
+
 use crate::schemas::{ErrorResponse, TodoUpdateRequest, Todo};
+use utoipa::IntoParams;
 
 
 pub(super) fn configure() -> impl FnOnce(&mut ServiceConfig) {
@@ -16,7 +18,6 @@ pub(super) fn configure() -> impl FnOnce(&mut ServiceConfig) {
         route_config(config)
     }
 }
-
 pub fn route_config(config: &mut ServiceConfig) {
     config.service(
         web::scope("/todo")
@@ -42,6 +43,13 @@ async fn health() -> impl Responder {
 /// ```text
 /// curl localhost:8080/todo
 /// ```
+#[utoipa::path(
+    get,
+    path = "/todo",
+    responses(
+        (status = 200, description = "List current todo items", body = [Todo])
+    )
+)]
 #[inject]
 async fn get_todos(#[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
     HttpResponse::Ok().json(repository.read_all().await)
@@ -56,6 +64,15 @@ async fn get_todos(#[inject] repository: Arc<dyn TodoRepository>) -> impl Respon
 /// ```text
 /// curl localhost:8080/todo -d '{"id": 1, "value": "Buy movie ticket", "checked": false}'
 /// ```
+#[utoipa::path(
+    post,
+    path = "/todo",
+    request_body = Todo,
+    responses(
+        (status = 201, description = "Todo created successfully", body = Todo),
+        (status = 409, description = "Todo with id already exists", body = ErrorResponse, example = json!(ErrorResponse::Conflict(String::from("id = 1"))))
+    )
+)]
 #[inject]
 async fn create_todo(todo: Json<Todo>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
     let result = repository.create_one(&todo.into_inner()).await;
@@ -71,6 +88,21 @@ async fn create_todo(todo: Json<Todo>, #[inject] repository: Arc<dyn TodoReposit
 ///
 /// Api will delete todo from storage by the provided id and return success 200.
 /// If storage does not contain `Todo` with given id 404 not found will be returned.
+#[utoipa::path(
+    delete,
+    path = "/todo",
+    responses(
+        (status = 200, description = "Todo deleted successfully"),
+        (status = 401, description = "Unauthorized to delete Todo", body = ErrorResponse, example = json!(ErrorResponse::Unauthorized(String::from("missing api key")))),
+        (status = 404, description = "Todo not found by id", body = ErrorResponse, example = json!(ErrorResponse::NotFound(String::from("id = 1"))))
+    ),
+    params(
+        ("id", description = "Unique storage id of Todo")
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
 #[inject]
 async fn delete_todo(id: Path<u64>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
     let result = repository.delete_one(*id).await;
@@ -83,6 +115,17 @@ async fn delete_todo(id: Path<u64>, #[inject] repository: Arc<dyn TodoRepository
 /// Get Todo by given todo id.
 ///
 /// Return found `Todo` with status 200 or 404 not found if `Todo` is not found from shared in-memory storage.
+#[utoipa::path(
+    get,
+    path = "/todo/{id}",
+    responses(
+        (status = 200, description = "Todo found from storage", body = Todo),
+        (status = 404, description = "Todo not found by id", body = ErrorResponse, example = json!(ErrorResponse::NotFound(String::from("id = 1"))))
+    ),
+    params(
+        ("id", description = "Unique storage id of Todo")
+    )
+)]
 #[inject]
 async fn get_todo_by_id(id: Path<u64>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
     let result = repository.read_one(*id).await;
@@ -100,6 +143,22 @@ async fn get_todo_by_id(id: Path<u64>, #[inject] repository: Arc<dyn TodoReposit
 /// Tries to update `Todo` by given id as path variable. If todo is found by id values are
 /// updated according `TodoUpdateRequest` and updated `Todo` is returned with status 200.
 /// If todo is not found then 404 not found is returned.
+#[utoipa::path(
+    put,
+    path = "/todo/{id}",
+    request_body = TodoUpdateRequest,
+    responses(
+        (status = 200, description = "Todo updated successfully", body = Todo),
+        (status = 404, description = "Todo not found by id", body = ErrorResponse, example = json!(ErrorResponse::NotFound(String::from("id = 1"))))
+    ),
+    params(
+        ("id", description = "Unique storage id of Todo")
+    ),
+    security(
+        (),
+        ("api_key" = [])
+    )
+)]
 #[inject]
 async fn update_todo(
     id: Path<u64>,
@@ -114,7 +173,7 @@ async fn update_todo(
 }
 
 /// Search todos Query
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, IntoParams)]
 pub(super) struct SearchTodos {
     /// Content that should be found from Todo's value field
     value: String,
@@ -124,6 +183,16 @@ pub(super) struct SearchTodos {
 ///
 /// Perform search from `Todo`s present in in-memory storage by matching Todo's value to
 /// value provided as query parameter. Returns 200 and matching `Todo` items.
+#[utoipa::path(
+    get,
+    path = "/todo/search",
+    params(
+        SearchTodos
+    ),
+    responses(
+        (status = 200, description = "Search Todos did not result error", body = [Todo]),
+    )
+)]
 #[inject]
 async fn search_todos(
     query: Query<SearchTodos>,
