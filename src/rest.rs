@@ -1,31 +1,36 @@
 use actix_web::{
-    delete, get, post, put,
-    web::{Data, Json, Path, Query, ServiceConfig},
+    web,
+    get,
+    web::{Json, Path, Query, ServiceConfig},
     HttpResponse, Responder,
 };
 use serde::Deserialize;
+use coi_actix_web::inject;
 
-
-use crate::TodoStore;
+use crate::store_interface::TodoRepository;
 use crate::schemas::{ErrorResponse, TodoUpdateRequest, Todo};
 
 
-pub(super) fn configure(store: Data<TodoStore>) -> impl FnOnce(&mut ServiceConfig) {
+pub(super) fn configure() -> impl FnOnce(&mut ServiceConfig) {
     |config: &mut ServiceConfig| {
-        config
-            .app_data(store)
-            .service(search_todos)
-            .service(get_todos)
-            .service(create_todo)
-            .service(delete_todo)
-            .service(get_todo_by_id)
-            .service(update_todo);
+        route_config(config)
     }
 }
 
+pub fn route_config(config: &mut ServiceConfig) {
+    config.service(
+        web::scope("/todo")
+            .route("", web::get().to(get_todos))
+            .route("", web::post().to(create_todo))
+            .route("", web::delete().to(delete_todo))
+            .route("/search", web::get().to(search_todos))
+            .route("/{id}", web::get().to(get_todo_by_id))
+            .route("/{id}", web::put().to(update_todo))
+    ).service(health);
+}
 
 #[get("/health")]
-async fn again() -> impl Responder {
+async fn health() -> impl Responder {
     HttpResponse::Ok().body("")
 }
 
@@ -37,9 +42,9 @@ async fn again() -> impl Responder {
 /// ```text
 /// curl localhost:8080/todo
 /// ```
-#[get("/todo")]
-pub(super) async fn get_todos(todo_store: Data<TodoStore>) -> impl Responder {
-    HttpResponse::Ok().json(todo_store.get_repository().read_all().await)
+#[inject]
+async fn get_todos(#[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
+    HttpResponse::Ok().json(repository.read_all().await)
 }
 
 /// Create new Todo to storage.
@@ -51,9 +56,9 @@ pub(super) async fn get_todos(todo_store: Data<TodoStore>) -> impl Responder {
 /// ```text
 /// curl localhost:8080/todo -d '{"id": 1, "value": "Buy movie ticket", "checked": false}'
 /// ```
-#[post("/todo")]
-pub(super) async fn create_todo(todo: Json<Todo>, todo_store: Data<TodoStore>) -> impl Responder {
-    let result = todo_store.get_repository().create_one(&todo.into_inner()).await;
+#[inject]
+async fn create_todo(todo: Json<Todo>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
+    let result = repository.create_one(&todo.into_inner()).await;
     return match result {
         Ok(todo_ret) => HttpResponse::Ok().json(todo_ret),
         Err(existing) =>  HttpResponse::Conflict().json(ErrorResponse::Conflict(format!("id = {}", existing.id)))
@@ -66,9 +71,9 @@ pub(super) async fn create_todo(todo: Json<Todo>, todo_store: Data<TodoStore>) -
 ///
 /// Api will delete todo from storage by the provided id and return success 200.
 /// If storage does not contain `Todo` with given id 404 not found will be returned.
-#[delete("/todo/{id}")]
-pub(super) async fn delete_todo(id: Path<u64>, todo_store: Data<TodoStore>) -> impl Responder {
-    let result = todo_store.get_repository().delete_one(*id).await;
+#[inject]
+async fn delete_todo(id: Path<u64>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
+    let result = repository.delete_one(*id).await;
     return match result {
         Ok(()) => HttpResponse::Ok().finish(),
         Err(()) => HttpResponse::NotFound().json(ErrorResponse::NotFound(format!("id = {id}")))
@@ -78,9 +83,9 @@ pub(super) async fn delete_todo(id: Path<u64>, todo_store: Data<TodoStore>) -> i
 /// Get Todo by given todo id.
 ///
 /// Return found `Todo` with status 200 or 404 not found if `Todo` is not found from shared in-memory storage.
-#[get("/todo/{id}")]
-pub(super) async fn get_todo_by_id(id: Path<u64>, todo_store: Data<TodoStore>) -> impl Responder {
-    let result = todo_store.get_repository().read_one(*id).await;
+#[inject]
+async fn get_todo_by_id(id: Path<u64>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
+    let result = repository.read_one(*id).await;
     return match result {
         Ok(todo) => HttpResponse::Ok().json(todo),
         Err(()) => HttpResponse::NotFound().json(ErrorResponse::NotFound(format!("id = {id}")))
@@ -95,13 +100,13 @@ pub(super) async fn get_todo_by_id(id: Path<u64>, todo_store: Data<TodoStore>) -
 /// Tries to update `Todo` by given id as path variable. If todo is found by id values are
 /// updated according `TodoUpdateRequest` and updated `Todo` is returned with status 200.
 /// If todo is not found then 404 not found is returned.
-#[put("/todo/{id}")]
-pub(super) async fn update_todo(
+#[inject]
+async fn update_todo(
     id: Path<u64>,
     todo: Json<TodoUpdateRequest>,
-    todo_store: Data<TodoStore>,
+    #[inject] repository: Arc<dyn TodoRepository>,
 ) -> impl Responder {
-    let result = todo_store.get_repository().update_one(*id, todo.into_inner()).await;
+    let result = repository.update_one(*id, todo.into_inner()).await;
     return match result {
         Ok(todo) => HttpResponse::Ok().json(todo),
         Err(()) => HttpResponse::NotFound().json(ErrorResponse::NotFound(format!("id = {id}")))
@@ -119,10 +124,12 @@ pub(super) struct SearchTodos {
 ///
 /// Perform search from `Todo`s present in in-memory storage by matching Todo's value to
 /// value provided as query parameter. Returns 200 and matching `Todo` items.
-#[get("/todo/search")]
-pub(super) async fn search_todos(
+#[inject]
+async fn search_todos(
     query: Query<SearchTodos>,
-    todo_store: Data<TodoStore>,
+    #[inject] repository: Arc<dyn TodoRepository>,
 ) -> impl Responder {
-    HttpResponse::Ok().json(todo_store.get_repository().read_filter(&query.value).await)
+    HttpResponse::Ok().json(repository.read_filter(&query.value).await)
 }
+
+

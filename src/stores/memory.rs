@@ -1,23 +1,33 @@
 use std::sync::Mutex;
 use std::collections::HashMap;
 
-use crate::schemas::{Todo, TodoUpdateRequest};
-use crate::store_interface::ITodo;
+pub use crate::schemas::{Todo, TodoUpdateRequest};
+pub use crate::store_interface::TodoRepository;
 use async_trait::async_trait;
+use coi::Inject;
 
+
+#[derive(Default, Inject)]
+#[coi(provides pub dyn TodoRepository as TodoMemoryProvider with InMemoryTodo::new(None))]
+#[coi(provides pub dyn TodoRepository as TestTodoProvider with InMemoryTodo::new(Some([Todo{id:1, value:"some value".to_owned(), checked: true}].to_vec())))]
 pub struct InMemoryTodo {
-    todos: Mutex<HashMap<u64, Todo>>
+    pub todos: Mutex<HashMap<u64, Todo>>
 }
 
 impl InMemoryTodo {
-    pub fn new(map: Option<HashMap<u64, Todo>>) -> Self {
-        Self{ todos: Mutex::new(map.unwrap_or(HashMap::new()))}
+    pub fn new(map: Option<Vec<Todo>>) -> Self {
+        let vec = map.unwrap_or(Vec::new());
+        let mut hmap: HashMap<u64, Todo> = HashMap::new();
+        for t in vec.iter(){
+            hmap.insert(t.id, t.clone());
+        }
+        Self{ todos: Mutex::new(hmap)}
     }
 }
 
 
 #[async_trait]
-impl ITodo for InMemoryTodo {
+impl TodoRepository for InMemoryTodo {
 
     async fn read_all(&self) -> Vec<Todo> {
         self.todos.lock().unwrap().values().cloned().collect()
@@ -43,7 +53,7 @@ impl ITodo for InMemoryTodo {
     }
 
     async fn update_one(&self, id: u64, todo_update: TodoUpdateRequest) -> Result<Todo, ()> {
-        let todos = self.todos.lock().unwrap();
+        let mut todos = self.todos.lock().unwrap();
         let existing_todo = todos.get(&id);
         if existing_todo.is_none(){
             return Err(())
@@ -51,6 +61,7 @@ impl ITodo for InMemoryTodo {
         let mut todo = existing_todo.unwrap().to_owned();
         todo.value = todo_update.value.unwrap_or(todo.value);
         todo.checked = todo_update.checked.unwrap_or(todo.checked);
+        todos.insert(id, todo.clone());
         Ok(todo)
     }
 

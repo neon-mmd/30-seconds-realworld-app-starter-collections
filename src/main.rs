@@ -5,10 +5,10 @@ use std::{
 
 use actix_web::{
     middleware::Logger,
-    web::Data,
     App, HttpServer,
 };
-
+use coi::container;
+use stores::memory::TodoMemoryProvider;
 
 mod rest;
 mod store_interface;
@@ -21,20 +21,19 @@ mod tests {
     pub mod rest;
 }
 
-use crate::store_interface::TodoStore;
-
-
 #[actix_web::main]
 async fn main() -> Result<(), impl Error> {
     env_logger::init();
-
-    let data_store: Data<TodoStore> = Data::new(TodoStore::new());
+    let containers = container!{
+        repository => TodoMemoryProvider; singleton,
+    };
 
     HttpServer::new(move || {
         // This factory closure is called on each worker thread independently.
         App::new()
+            .app_data(containers.clone())
             .wrap(Logger::default())
-            .configure(rest::configure(data_store.clone()))
+            .configure(rest::configure())
     })
     .bind((Ipv4Addr::UNSPECIFIED, 8080))?
     .run()
