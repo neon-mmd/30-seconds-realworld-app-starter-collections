@@ -3,6 +3,7 @@
 #[cfg(test)]
 mod tests {
     use actix_web::{test::{self, TestRequest}, App, web::Data,  dev::ServiceResponse};
+    use std::collections::HashSet;
     use actix_http::Request;
     use coi::{container, Container};
     use rstest::{fixture, rstest};
@@ -34,7 +35,7 @@ mod tests {
         let app = test::init_service(App::new().app_data(container).configure(configure())).await;
         let req = test::TestRequest::get().uri("/todo");
         let resp = test::call_and_read_body_json::<_, _, Vec<Todo>>(&app, req.to_request()).await;
-        assert_eq!(resp, test_data);
+        assert_eq!(HashSet::<&Todo>::from_iter(resp.iter()), HashSet::<&Todo>::from_iter(test_data.iter()));
     }
 
     #[rstest]

@@ -15,6 +15,7 @@ mod store_interface;
 mod schemas;
 mod stores {
     pub mod memory;
+    pub mod postgres;
 }
 mod tests {
     pub mod memory;

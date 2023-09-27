@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Task to do.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Todo {
     /// Unique id for the todo item.
     pub id: u64,

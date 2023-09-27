@@ -19,3 +19,4 @@ async-std = { version = "1.11", features = ["attributes"] }
 mockall = "0.11"
 coi = "0.10"
 coi-actix-web = "0.7"
+deadpool-postgres = "0.7"
