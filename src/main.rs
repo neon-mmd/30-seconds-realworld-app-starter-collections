@@ -24,8 +24,9 @@ mod tests {
 #[actix_web::main]
 async fn main() -> Result<(), impl Error> {
     env_logger::init();
+    let memory_provider = TodoMemoryProvider::new(Vec::new());
     let containers = container!{
-        repository => TodoMemoryProvider; singleton,
+        repository => memory_provider; singleton,
     };
 
     HttpServer::new(move || {

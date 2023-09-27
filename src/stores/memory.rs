@@ -4,21 +4,32 @@ use std::collections::HashMap;
 pub use crate::schemas::{Todo, TodoUpdateRequest};
 pub use crate::store_interface::TodoRepository;
 use async_trait::async_trait;
-use coi::Inject;
+use coi::{Inject, Provide};
 
 
 #[derive(Default, Inject)]
-#[coi(provides pub dyn TodoRepository as TodoMemoryProvider with InMemoryTodo::new(None))]
-#[coi(provides pub dyn TodoRepository as TestTodoProvider with InMemoryTodo::new(Some([Todo{id:1, value:"some value".to_owned(), checked: true}].to_vec())))]
 pub struct InMemoryTodo {
     pub todos: Mutex<HashMap<u64, Todo>>
 }
 
+
+#[derive(Provide)]
+#[coi(provides pub dyn TodoRepository with InMemoryTodo::new(self.todo_list.clone()))]
+pub struct TodoMemoryProvider {
+    todo_list : Vec<Todo>
+}
+
+impl TodoMemoryProvider
+{
+    pub fn new(todo_list: Vec<Todo>) -> Self {
+        Self{todo_list}
+    }
+}
+
 impl InMemoryTodo {
-    pub fn new(map: Option<Vec<Todo>>) -> Self {
-        let vec = map.unwrap_or(Vec::new());
+    pub fn new(map: Vec<Todo>) -> Self {
         let mut hmap: HashMap<u64, Todo> = HashMap::new();
-        for t in vec.iter(){
+        for t in map.iter(){
             hmap.insert(t.id, t.clone());
         }
         Self{ todos: Mutex::new(hmap)}

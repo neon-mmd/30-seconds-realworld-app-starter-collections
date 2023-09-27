@@ -6,7 +6,7 @@ use crate::schemas::Todo;
 
 #[fixture]
 fn repository() -> InMemoryTodo {
-    InMemoryTodo::new(Some([Todo { id: 1, value: "some_value".to_owned(), checked: false }, Todo { id: 2, value: "some_other".to_owned(), checked: true }].to_vec()))
+    InMemoryTodo::new([Todo { id: 1, value: "some_value".to_owned(), checked: false }, Todo { id: 2, value: "some_other".to_owned(), checked: true }].to_vec())
 }
 
 #[rstest]
