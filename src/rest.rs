@@ -104,7 +104,7 @@ async fn create_todo(todo: Json<Todo>, #[inject] repository: Arc<dyn TodoReposit
     )
 )]
 #[inject]
-async fn delete_todo(id: Path<u64>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
+async fn delete_todo(id: Path<i64>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
     let result = repository.delete_one(*id).await;
     match result {
         Ok(()) => HttpResponse::Ok().finish(),
@@ -127,7 +127,7 @@ async fn delete_todo(id: Path<u64>, #[inject] repository: Arc<dyn TodoRepository
     )
 )]
 #[inject]
-async fn get_todo_by_id(id: Path<u64>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
+async fn get_todo_by_id(id: Path<i64>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
     let result = repository.read_one(*id).await;
     match result {
         Ok(todo) => HttpResponse::Ok().json(todo),
@@ -161,7 +161,7 @@ async fn get_todo_by_id(id: Path<u64>, #[inject] repository: Arc<dyn TodoReposit
 )]
 #[inject]
 async fn update_todo(
-    id: Path<u64>,
+    id: Path<i64>,
     todo: Json<TodoUpdateRequest>,
     #[inject] repository: Arc<dyn TodoRepository>,
 ) -> impl Responder {

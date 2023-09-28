@@ -9,26 +9,19 @@ use coi::{Inject, Provide};
 
 #[derive(Default, Inject)]
 pub struct InMemoryTodo {
-    pub todos: Mutex<HashMap<u64, Todo>>
+    pub todos: Mutex<HashMap<i64, Todo>>
 }
 
 
 #[derive(Provide)]
 #[coi(provides pub dyn TodoRepository with InMemoryTodo::new(self.todo_list.clone()))]
 pub struct TodoMemoryProvider {
-    todo_list : Vec<Todo>
-}
-
-impl TodoMemoryProvider
-{
-    pub fn new(todo_list: Vec<Todo>) -> Self {
-        Self{todo_list}
-    }
+    pub todo_list : Vec<Todo>
 }
 
 impl InMemoryTodo {
     pub fn new(map: Vec<Todo>) -> Self {
-        let mut hmap: HashMap<u64, Todo> = HashMap::new();
+        let mut hmap: HashMap<i64, Todo> = HashMap::new();
         for t in map.iter(){
             hmap.insert(t.id, t.clone());
         }
@@ -44,7 +37,7 @@ impl TodoRepository for InMemoryTodo {
         self.todos.lock().unwrap().values().cloned().collect()
     }
 
-    async fn read_one(&self, id: u64) -> Result<Todo, ()> {
+    async fn read_one(&self, id: i64) -> Result<Todo, ()> {
         let todos = self.todos.lock().unwrap();
         let one = todos.get(&id);
         if one.is_none(){
@@ -63,7 +56,7 @@ impl TodoRepository for InMemoryTodo {
         Err(existing_todo.unwrap().clone())
     }
 
-    async fn update_one(&self, id: u64, todo_update: TodoUpdateRequest) -> Result<Todo, ()> {
+    async fn update_one(&self, id: i64, todo_update: TodoUpdateRequest) -> Result<Todo, ()> {
         let mut todos = self.todos.lock().unwrap();
         let existing_todo = todos.get(&id);
         if existing_todo.is_none(){
@@ -76,7 +69,7 @@ impl TodoRepository for InMemoryTodo {
         Ok(todo)
     }
 
-    async fn delete_one(&self, id: u64) -> Result<(), ()> {
+    async fn delete_one(&self, id: i64) -> Result<(), ()> {
         let mut todos = self.todos.lock().unwrap();
         let existing = todos.remove(&id);
         if existing.is_none(){

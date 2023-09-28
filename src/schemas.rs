@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 #[derive(Serialize, Deserialize, ToSchema, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Todo {
     /// Unique id for the todo item.
-    pub id: u64,
+    pub id: i64,
     /// Description of the tasks to do.
     pub value: String,
     /// Mark is the task done or not

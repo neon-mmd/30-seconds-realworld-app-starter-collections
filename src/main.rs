@@ -1,17 +1,15 @@
 use std::{
     error::Error,
-    future::{self, Ready},
     net::Ipv4Addr,
 };
 
 use actix_web::{
-    dev::{Service, ServiceRequest, ServiceResponse, Transform},
     middleware::Logger,
-    web::Data,
-    App, HttpResponse, HttpServer,
+    App, HttpServer,
 };
 use coi::container;
-use stores::memory::TodoMemoryProvider;
+//use stores::memory::TodoMemoryProvider;
+use stores::postgres::TodoPostgresProvider;
 
 mod rest;
 mod store_interface;
@@ -35,10 +33,13 @@ use crate::schemas::{ErrorResponse, Todo, TodoUpdateRequest};
 
 #[actix_web::main]
 async fn main() -> Result<(), impl Error> {
-    env_logger::init();
-    let memory_provider = TodoMemoryProvider::new(Vec::new());
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    //Swap here as needed
+    //let provider = TodoMemoryProvider{todo_list: Vec::new()};
+    let provider = TodoPostgresProvider::new("some_postgres", "postgres", "replacethisplease", "postgres").await;
+    let _res = provider.migrate().await;
     let containers = container!{
-        repository => memory_provider; singleton,
+        repository => provider; singleton,
     };
     #[derive(OpenApi)]
     #[openapi(
@@ -64,8 +65,8 @@ async fn main() -> Result<(), impl Error> {
     HttpServer::new(move || {
         // This factory closure is called on each worker thread independently.
         App::new()
-            .app_data(containers.clone())
             .wrap(Logger::default())
+            .app_data(containers.clone())
             .configure(rest::configure())
             .service(Redoc::with_url("/redoc", openapi.clone()))
             .service(

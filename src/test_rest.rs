@@ -2,9 +2,8 @@
 
 #[cfg(test)]
 mod tests {
-    use actix_web::{test::{self, TestRequest}, App, web::Data,  dev::ServiceResponse};
+    use actix_web::{test, App, web::Data};
     use std::collections::HashSet;
-    use actix_http::Request;
     use coi::{container, Container};
     use rstest::{fixture, rstest};
     use crate::{schemas::Todo, stores::memory::{TodoRepository, TodoMemoryProvider}};
@@ -13,7 +12,7 @@ mod tests {
     #[fixture]
     fn fixt_container() -> fn(Vec<Todo>) -> Container {
         fn prepare(data: Vec<Todo>) -> Container {
-            let memory_provider: TodoMemoryProvider = TodoMemoryProvider::new(data);
+            let memory_provider: TodoMemoryProvider = TodoMemoryProvider{todo_list: data};
             let repo = container!{
                 repository => memory_provider; singleton
             };
@@ -36,6 +35,15 @@ mod tests {
         let req = test::TestRequest::get().uri("/todo");
         let resp = test::call_and_read_body_json::<_, _, Vec<Todo>>(&app, req.to_request()).await;
         assert_eq!(HashSet::<&Todo>::from_iter(resp.iter()), HashSet::<&Todo>::from_iter(test_data.iter()));
+    }
+
+    #[rstest]
+    async fn test_todo_get_by_id(fixt_container:fn(Vec<Todo>) -> Container , test_data: Vec<Todo>) {
+        let container = fixt_container(test_data.clone());
+        let app = test::init_service(App::new().app_data(container).configure(configure())).await;
+        let req = test::TestRequest::get().uri("/todo/1");
+        let resp = test::call_and_read_body_json::<_, _, Todo>(&app, req.to_request()).await;
+        assert_eq!(&resp, test_data.get(0).unwrap());
     }
 
     #[rstest]
