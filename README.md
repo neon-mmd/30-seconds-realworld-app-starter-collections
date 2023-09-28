@@ -32,10 +32,6 @@ You will need a running postgres local instance. The code is provided without Tl
 - Unit testing  `cargo test  --lib --bins`
 - Integration testing `cargo test --test '*'`. You will need to run the server instance to be able to pass integration test. See notes in the source file.
 
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
 ## License
 MIT
 Meant to be used, derived or commercialised freely and openly anywhere.
