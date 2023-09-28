@@ -4,8 +4,17 @@ use reqwest;
 use serde_json;
 use example::schemas::Todo;
 
+// Integration test(s)
+
+// While unit testing will cover most of the domain logic and rest api logic, you are left on your own when it comes to testing the database queries.
+// One way to guarantee your web app correctly integrates with the db is through integration testing.
+// This test is stateful. It can be integrated on pipelines, but it requires a fully dedicated database, started and torn down in your CI integration.
+// Because it's stateful, it's also purely sequential. While you could technically have several sets of test, 
+// reducing paralellism to 1 and having to clean state between each is basically equivalent to running a single full test as shown below.
+
 #[rstest]
 fn test_bin (){
+    // Perform a few queries and check results semantically.
     let client = reqwest::blocking::Client::new();
     let resp = client.get("http://localhost:8080/health").send().unwrap();
 

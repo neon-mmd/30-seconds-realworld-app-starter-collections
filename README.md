@@ -9,6 +9,7 @@ The service itself is a basic Create / Read / Update / Delete of a todo list, sh
 ## What you may reuse pulling this example
 
 - A fast web service in an extensible port and adapter pattern, using dependency injection
+- Documented sources you can play around and make experimental changes with
 - Multi stage docker file for building minimal images
 - API documentation and manual testing with Swagger UI, Redoc, Rapi
 - Async postgres client storage example
@@ -29,7 +30,7 @@ You will need a running postgres local instance. The code is provided without Tl
 ### Testing
 
 - Unit testing  `cargo test  --lib --bins`
-- Integration testing `cargo test --test '*'`. You will need to run the server instance to be able to pass integration test. See notes below.
+- Integration testing `cargo test --test '*'`. You will need to run the server instance to be able to pass integration test. See notes in the source file.
 
 # Editing this README
 
