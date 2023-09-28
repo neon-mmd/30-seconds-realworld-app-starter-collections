@@ -8,11 +8,11 @@ use async_trait::async_trait;
 
 #[derive(Inject)]
 pub struct PostgresTodo {
-    pub pool: Pool
+    pub pool: deadpool_postgres::Pool
 }
 
 impl PostgresTodo {
-    fn new(pool: Pool) -> Self {
+    pub fn new(pool: deadpool_postgres::Pool) -> Self {
         Self { pool: pool.clone() }
     }
 }
@@ -21,12 +21,12 @@ impl PostgresTodo {
 #[derive(Provide)]
 #[coi(provides pub dyn TodoRepository with PostgresTodo::new(self.pool.clone()))]
 pub struct TodoPostgresProvider {
-    pub pool: Pool
+    pub pool: deadpool_postgres::Pool
 }
 
 impl TodoPostgresProvider
 {
-    async fn new(host: &str, user: &str, password: &str, dbname: &str) -> Self {
+    pub async fn new(host: &str, user: &str, password: &str, dbname: &str) -> Self {
         // Connect to the database.
         let mut cfg = Config::new();
         if user.len() > 0{
@@ -41,12 +41,11 @@ impl TodoPostgresProvider
         let pool = cfg.create_pool(NoTls).unwrap();
         Self {pool: pool}
     }
-    async fn migrate(&self) -> Result<u64, tokio_postgres::Error>{
+    pub async fn migrate(&self) -> Result<u64, tokio_postgres::Error>{
         let client = self.pool.get().await.unwrap();
         client.execute("CREATE TABLE IF NOT EXISTS todo (id BIGINT, value TEXT, checked BOOLEAN);", &[]).await
     }
 }
-
 
 
 #[async_trait]

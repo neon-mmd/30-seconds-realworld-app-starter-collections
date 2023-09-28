@@ -15,12 +15,13 @@ mod store_interface;
 mod schemas;
 mod stores {
     pub mod memory;
+    #[cfg(test)]
+    pub mod test_memory;
     pub mod postgres;
 }
-mod tests {
-    pub mod memory;
-    pub mod rest;
-}
+#[cfg(test)]
+pub mod test_rest;
+
 
 #[actix_web::main]
 async fn main() -> Result<(), impl Error> {

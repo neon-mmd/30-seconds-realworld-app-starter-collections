@@ -22,8 +22,8 @@ pub fn route_config(config: &mut ServiceConfig) {
         web::scope("/todo")
             .route("", web::get().to(get_todos))
             .route("", web::post().to(create_todo))
-            .route("", web::delete().to(delete_todo))
             .route("/search", web::get().to(search_todos))
+            .route("/{id}", web::delete().to(delete_todo))
             .route("/{id}", web::get().to(get_todo_by_id))
             .route("/{id}", web::put().to(update_todo))
     ).service(health);
@@ -31,7 +31,7 @@ pub fn route_config(config: &mut ServiceConfig) {
 
 #[get("/health")]
 async fn health() -> impl Responder {
-    HttpResponse::Ok().body("")
+    HttpResponse::Ok().body("OK")
 }
 
 /// Get list of todos.
@@ -59,8 +59,8 @@ async fn get_todos(#[inject] repository: Arc<dyn TodoRepository>) -> impl Respon
 #[inject]
 async fn create_todo(todo: Json<Todo>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
     let result = repository.create_one(&todo.into_inner()).await;
-    return match result {
-        Ok(todo_ret) => HttpResponse::Ok().json(todo_ret),
+    match result {
+        Ok(todo_ret) => HttpResponse::Created().json(todo_ret),
         Err(existing) =>  HttpResponse::Conflict().json(ErrorResponse::Conflict(format!("id = {}", existing.id)))
     }
 }
@@ -74,7 +74,7 @@ async fn create_todo(todo: Json<Todo>, #[inject] repository: Arc<dyn TodoReposit
 #[inject]
 async fn delete_todo(id: Path<u64>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
     let result = repository.delete_one(*id).await;
-    return match result {
+    match result {
         Ok(()) => HttpResponse::Ok().finish(),
         Err(()) => HttpResponse::NotFound().json(ErrorResponse::NotFound(format!("id = {id}")))
     }
@@ -86,7 +86,7 @@ async fn delete_todo(id: Path<u64>, #[inject] repository: Arc<dyn TodoRepository
 #[inject]
 async fn get_todo_by_id(id: Path<u64>, #[inject] repository: Arc<dyn TodoRepository>) -> impl Responder {
     let result = repository.read_one(*id).await;
-    return match result {
+    match result {
         Ok(todo) => HttpResponse::Ok().json(todo),
         Err(()) => HttpResponse::NotFound().json(ErrorResponse::NotFound(format!("id = {id}")))
     }
@@ -107,7 +107,7 @@ async fn update_todo(
     #[inject] repository: Arc<dyn TodoRepository>,
 ) -> impl Responder {
     let result = repository.update_one(*id, todo.into_inner()).await;
-    return match result {
+    match result {
         Ok(todo) => HttpResponse::Ok().json(todo),
         Err(()) => HttpResponse::NotFound().json(ErrorResponse::NotFound(format!("id = {id}")))
     }
