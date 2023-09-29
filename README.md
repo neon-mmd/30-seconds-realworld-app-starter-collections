@@ -25,7 +25,8 @@ Run `docker compose up -d`. On the first creation of db, it sends too soon a rea
 
 ### Without docker
 
-You will need a running postgres local instance. The code is provided without Tls option enabled. Once your postgres server is running, simply `cargo run` 
+Out of the box you will need a running postgres local instance. The code is provided without Tls option enabled. Once your postgres server is running, simply `cargo run`. Alternatively
+you can use an in-memory store provided. Swapping storage method is only a couple of line changes in the main.rs.
 
 ### Testing
 
